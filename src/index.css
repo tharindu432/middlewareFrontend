@@ -1,0 +1,243 @@
+/* Professional Design System - FitsAir */
+@import "tailwindcss";
+
+/* Google Fonts - Inter for modern professional look */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+/* Smooth Animations */
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes shimmer {
+    0% { background-position: -1000px 0; }
+    100% { background-position: 1000px 0; }
+}
+
+@layer base {
+    * {
+        @apply border-gray-200;
+    }
+
+    html, body {
+        @apply bg-gray-50 text-gray-900 antialiased;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        height: 100vh;
+        overflow: hidden;
+        font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    }
+
+    #root {
+        height: 100vh;
+        overflow: hidden;
+    }
+}
+
+@layer components {
+    /* Professional Card Styles */
+    .card {
+        @apply bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-all duration-200;
+    }
+
+    .glass-card-light {
+        @apply bg-white/95 backdrop-blur-sm rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-all duration-200;
+    }
+
+    /* Summary Cards */
+    .summary-card {
+        @apply bg-white rounded-lg p-6 shadow-sm border border-gray-200 hover:shadow-md transition-all duration-200;
+    }
+
+    .stat-card {
+        @apply bg-white rounded-lg p-6 shadow-sm border border-gray-200 hover:shadow-md transition-all duration-200;
+    }
+
+    /* Professional Status Badges */
+    .status-pending {
+        @apply bg-amber-50 text-amber-700 px-3 py-1 rounded-full text-xs font-semibold border border-amber-200;
+    }
+
+    .status-confirmed {
+        @apply bg-emerald-50 text-emerald-700 px-3 py-1 rounded-full text-xs font-semibold border border-emerald-200;
+    }
+
+    .status-cancelled {
+        @apply bg-red-50 text-red-700 px-3 py-1 rounded-full text-xs font-semibold border border-red-200;
+    }
+
+    /* World-Class Button System */
+    .btn {
+        @apply px-4 py-2 rounded-lg font-medium transition-all duration-200 inline-flex items-center justify-center gap-2 cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2;
+    }
+
+    .btn-primary {
+        @apply bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500 shadow-sm hover:shadow active:scale-[0.98];
+    }
+
+    .btn-secondary {
+        @apply bg-gray-600 text-white hover:bg-gray-700 focus:ring-gray-500 shadow-sm hover:shadow active:scale-[0.98];
+    }
+
+    .btn-success {
+        @apply bg-emerald-600 text-white hover:bg-emerald-700 focus:ring-emerald-500 shadow-sm hover:shadow active:scale-[0.98];
+    }
+
+    .btn-danger {
+        @apply bg-red-600 text-white hover:bg-red-700 focus:ring-red-500 shadow-sm hover:shadow active:scale-[0.98];
+    }
+
+    .btn-warning {
+        @apply bg-amber-600 text-white hover:bg-amber-700 focus:ring-amber-500 shadow-sm hover:shadow active:scale-[0.98];
+    }
+
+    .btn-info {
+        @apply bg-cyan-600 text-white hover:bg-cyan-700 focus:ring-cyan-500 shadow-sm hover:shadow active:scale-[0.98];
+    }
+
+    .btn-outline {
+        @apply border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 focus:ring-gray-500 active:scale-[0.98];
+    }
+
+    .btn-ghost {
+        @apply text-gray-700 hover:bg-gray-100 focus:ring-gray-500 active:scale-[0.98];
+    }
+
+    /* Professional Form Inputs */
+    .input-field {
+        @apply w-full px-3 py-2 rounded-lg border border-gray-300 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-150 bg-white;
+    }
+
+    .input-field-light {
+        @apply w-full px-3 py-2 rounded-lg border border-gray-300 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-150 bg-gray-50 hover:bg-white;
+    }
+
+    /* Professional Table Styles */
+    .table-clean {
+        @apply w-full text-sm text-left;
+    }
+
+    .table-clean thead {
+        @apply bg-gray-50 border-b border-gray-200;
+    }
+
+    .table-clean thead th {
+        @apply px-6 py-3 text-xs font-semibold text-gray-700 uppercase tracking-wider;
+    }
+
+    .table-clean tbody {
+        @apply bg-white divide-y divide-gray-200;
+    }
+
+    .table-clean tbody tr {
+        @apply hover:bg-gray-50 transition-colors duration-150;
+    }
+
+    .table-clean tbody td {
+        @apply px-6 py-4 whitespace-nowrap text-gray-900;
+    }
+
+    /* Loading Skeleton */
+    .skeleton {
+        @apply bg-gray-200 rounded animate-pulse;
+    }
+
+    /* Page Container */
+    .page-container {
+        @apply p-6 bg-gray-50 h-full overflow-y-auto;
+    }
+
+    /* Notification Badge */
+    .notification-badge {
+        @apply absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center;
+    }
+
+    /* Icon Containers */
+    .icon-box {
+        @apply w-12 h-12 rounded-lg flex items-center justify-center;
+    }
+
+    .icon-container {
+        @apply w-12 h-12 rounded-lg flex items-center justify-center;
+    }
+
+    /* Animations */
+    .animate-slide-in {
+        animation: slideIn 0.3s ease-out;
+    }
+
+    .animate-fade-in {
+        animation: fadeIn 0.3s ease-out;
+    }
+
+    /* Divider */
+    .divider {
+        @apply h-px bg-gray-200 my-6;
+    }
+
+    /* Page Header */
+    .page-header {
+        @apply flex items-center justify-between mb-6;
+    }
+
+    .page-title {
+        @apply text-2xl font-bold text-gray-900 mb-1;
+    }
+
+    .page-subtitle {
+        @apply text-sm text-gray-600;
+    }
+
+    /* Action Buttons Container */
+    .page-actions {
+        @apply flex items-center gap-3;
+    }
+
+    /* Card Header */
+    .card-header {
+        @apply flex items-center justify-between mb-4 pb-4 border-b border-gray-200;
+    }
+
+    .card-title {
+        @apply text-lg font-semibold text-gray-900;
+    }
+
+    /* Toast */
+    .glass-card {
+        @apply bg-gray-800 backdrop-blur-sm rounded-lg;
+    }
+
+    /* Professional Button Hover Effects */
+    button {
+        @apply cursor-pointer;
+    }
+
+    button:disabled {
+        @apply cursor-not-allowed opacity-50;
+    }
+
+    /* Smooth Transitions */
+    a, button, input, select, textarea {
+        @apply transition-all duration-200;
+    }
+
+    /* Sidebar Link Styles */
+    .sidebar-link {
+        @apply flex items-center gap-3 px-4 py-2.5 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors duration-150;
+    }
+
+    .sidebar-link-active {
+        @apply bg-blue-50 text-blue-700 font-medium;
+    }
+}
