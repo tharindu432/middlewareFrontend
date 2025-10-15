@@ -7,7 +7,7 @@ const TicketIssue = () => {
   const handleIssue = async (e) => {
     e.preventDefault();
     try {
-      await api.issueTicket({ ...formData, bookingId });
+      await api.issueTicket({ ...formData, bookingId: formData.bookingId });
       alert('Ticket issued successfully!');
     } catch (error) {
       console.error('Ticket issue failed:', error);

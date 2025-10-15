@@ -1,16 +1,20 @@
 import { useState } from 'react';
 import { api } from '../../services/api';
+import { useToast } from '../Common/Toast';
 
 const EmployeeResetPassword = () => {
+  const toast = useToast();
   const [employeeId, setEmployeeId] = useState('');
 
   const handleReset = async (e) => {
     e.preventDefault();
     try {
       await api.resetEmployeePassword(employeeId);
-      alert('Password reset successfully!');
+      toast.success('Password reset successfully');
+      setEmployeeId('');
     } catch (error) {
-      console.error('Password reset failed:', error);
+      const msg = error?.response?.data?.message || 'Password reset failed';
+      toast.error(msg);
     }
   };
 

@@ -3,12 +3,16 @@ import { api } from '../../services/api';
 
 const CreditTopup = () => {
   const [amount, setAmount] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('BANK_TRANSFER');
+  const [referenceNumber, setReferenceNumber] = useState('');
 
   const handleTopup = async (e) => {
     e.preventDefault();
     try {
-      await api.topupCredit({ amount });
+      await api.topupCredit({ amount: Number(amount), paymentMethod, referenceNumber });
       alert('Credit topped up successfully!');
+      setAmount('');
+      setReferenceNumber('');
     } catch (error) {
       console.error('Credit topup failed:', error);
     }
@@ -23,6 +27,22 @@ const CreditTopup = () => {
           placeholder="Amount"
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
+          className="w-full p-2 border rounded"
+          required
+        />
+        <select
+          value={paymentMethod}
+          onChange={(e) => setPaymentMethod(e.target.value)}
+          className="w-full p-2 border rounded"
+        >
+          <option value="BANK_TRANSFER">Bank Transfer</option>
+          <option value="CREDIT_CARD">Credit Card</option>
+        </select>
+        <input
+          type="text"
+          placeholder="Reference Number"
+          value={referenceNumber}
+          onChange={(e) => setReferenceNumber(e.target.value)}
           className="w-full p-2 border rounded"
           required
         />

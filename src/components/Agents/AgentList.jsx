@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { api } from '../../services/api';
+import { useToast } from '../Common/Toast';
 
 const AgentList = () => {
+  const toast = useToast();
   const [agents, setAgents] = useState([]);
 
   useEffect(() => {
@@ -10,7 +12,8 @@ const AgentList = () => {
         const response = await api.getAgents();
         setAgents(response.data);
       } catch (error) {
-        console.error('Agent list fetch failed:', error);
+        const msg = error?.response?.data?.message || 'Failed to load agents';
+        toast.error(msg);
       }
     };
     fetchAgents();

@@ -19,7 +19,7 @@ const CreditBalance = () => {
   return (
     <div className="card mb-6">
       <h2 className="text-xl font-bold mb-4">Credit Balance</h2>
-      <p className="text-2xl font-bold">$${balance}</p>
+      <p className="text-2xl font-bold">${balance}</p>
     </div>
   );
 };

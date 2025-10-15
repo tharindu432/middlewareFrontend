@@ -55,85 +55,6 @@ const extractToken = (resData) => {
   );
 };
 
-const dummyData = {
-  login: { data: { token: 'dummy-token-123' } },
-  flights: Array(5).fill().map((_, i) => ({
-    id: `flight-${i + 1}`,
-    origin: `City${i + 1}`,
-    destination: `City${i + 2}`,
-    price: (100 + i * 50).toFixed(2),
-    date: '2025-10-15',
-  })),
-  bookings: Array(5).fill().map((_, i) => ({
-    id: `booking-${i + 1}`,
-    contactEmail: `user${i + 1}@example.com`,
-    route: `City${i + 1} to City${i + 2}`,
-    date: '2025-10-14',
-    amount: (200 + i * 30).toFixed(2),
-    status: i % 2 === 0 ? 'Pending' : 'Confirmed',
-  })),
-  tickets: Array(5).fill().map((_, i) => ({
-    id: `ticket-${i + 1}`,
-    bookingId: `booking-${i + 1}`,
-    passengerName: `Passenger ${i + 1}`,
-    status: i % 2 === 0 ? 'Issued' : 'Voided',
-  })),
-  agentProfile: {
-    name: 'John Doe',
-    email: 'john.doe@fitsair.com',
-    creditLimit: 1000.00,
-  },
-  agents: Array(5).fill().map((_, i) => ({
-    id: `agent-${i + 1}`,
-    name: `Agent ${i + 1}`,
-    email: `agent${i + 1}@fitsair.com`,
-  })),
-  agentUsers: Array(3).fill().map((_, i) => ({
-    id: `agent-user-${i + 1}`,
-    name: `Agent User ${i + 1}`,
-    email: `agent.user${i + 1}@fitsair.com`,
-    phone: `+12345678${i}${i}`,
-    role: 'AGENT_USER',
-  })),
-  creditBalance: { balance: 500.00 },
-  creditTransactions: Array(5).fill().map((_, i) => ({
-    id: `trans-${i + 1}`,
-    amount: (50 + i * 20).toFixed(2),
-    date: '2025-10-14',
-  })),
-  invoices: Array(5).fill().map((_, i) => ({
-    id: `invoice-${i + 1}`,
-    amount: (300 + i * 40).toFixed(2),
-    date: '2025-10-14',
-    status: 'Paid',
-  })),
-  payments: Array(5).fill().map((_, i) => ({
-    id: `payment-${i + 1}`,
-    amount: (100 + i * 25).toFixed(2),
-    date: '2025-10-14',
-    method: 'credit_card',
-  })),
-  salesReport: { total: 1500.00, items: Array(5).fill().map((_, i) => ({ id: `sale-${i + 1}`, amount: (200 + i * 50).toFixed(2), date: '2025-10-14' })) },
-  bookingsReport: { count: 10, items: Array(5).fill().map((_, i) => ({ id: `book-${i + 1}`, customer: `Cust ${i + 1}`, date: '2025-10-14' })) },
-  financialReport: { total: 2000.00, items: Array(5).fill().map((_, i) => ({ id: `fin-${i + 1}`, amount: (300 + i * 60).toFixed(2), date: '2025-10-14' })) },
-  performanceReport: { score: 85, items: Array(5).fill().map((_, i) => ({ id: `perf-${i + 1}`, score: 80 + i * 5, date: '2025-10-14' })) },
-  approvals: Array(3).fill().map((_, i) => ({
-    id: `approval-${i + 1}`,
-    name: `New Agent ${i + 1}`,
-    email: `newagent${i + 1}@fitsair.com`,
-  })),
-  adminLogs: Array(5).fill().map((_, i) => ({
-    id: `log-${i + 1}`,
-    action: `Action ${i + 1}`,
-    timestamp: '2025-10-14T03:10:00+0530',
-  })),
-  employees: Array(5).fill().map((_, i) => ({
-    id: `emp-${i + 1}`,
-    name: `Employee ${i + 1}`,
-    email: `emp${i + 1}@fitsair.com`,
-  })),
-};
-
 const api = {
   async login(email, password, userType = 'ADMIN') {
     const res = await http.post('/api/v1/auth/login', { email, password, userType });
@@ -150,7 +71,7 @@ const api = {
     try {
       const refreshToken = localStorage.getItem('refreshToken');
       await http.post('/api/v1/auth/logout', { refreshToken });
-    } catch (e) {
+    } catch {
       // ignore backend logout failures, proceed with client cleanup
     }
   },
@@ -228,22 +149,12 @@ const api = {
 
   // Agent-side user management (Agent can manage their own users)
   getAgentUsers: async () => {
-    try {
-      const res = await http.get('/api/v1/agents/users');
-      return { data: res.data };
-    } catch (e) {
-      console.warn('Falling back to dummy agent users list');
-      return Promise.resolve({ data: dummyData.agentUsers });
-    }
+    const res = await http.get('/api/v1/agents/users');
+    return { data: res.data };
   },
   createAgentUser: async (payload) => {
-    try {
-      const res = await http.post('/api/v1/agents/users', payload);
-      return res.data;
-    } catch (e) {
-      console.warn('Mock createAgentUser called');
-      return Promise.resolve({ id: 'agent-user-mock', ...payload });
-    }
+    const res = await http.post('/api/v1/agents/users', payload);
+    return res.data;
   },
 
   // Admin-side agent management
@@ -279,49 +190,13 @@ const api = {
     const res = await http.get('/api/v1/credit/topups');
     return { data: res.data };
   },
-  getInvoices: () => {
-    console.log('Mock getInvoices called');
-    return Promise.resolve({ data: dummyData.invoices });
+  approveCreditTopup: async (id) => {
+    const res = await http.post(`/api/v1/admin/credit-topups/${id}/approve`);
+    return res.data;
   },
-  getInvoiceDetails: () => {
-    console.log('Mock getInvoiceDetails called');
-    return Promise.resolve({ data: dummyData.invoices[0] });
-  },
-  downloadInvoice: () => {
-    console.log('Mock downloadInvoice called');
-    return Promise.resolve({ data: new Blob(['PDF content']) });
-  },
-  makePayment: () => {
-    console.log('Mock makePayment called');
-    return Promise.resolve();
-  },
-  getPaymentHistory: () => {
-    console.log('Mock getPaymentHistory called');
-    return Promise.resolve({ data: dummyData.payments });
-  },
-  getPaymentDetails: () => {
-    console.log('Mock getPaymentDetails called');
-    return Promise.resolve({ data: dummyData.payments[0] });
-  },
-  getSalesReport: () => {
-    console.log('Mock getSalesReport called');
-    return Promise.resolve({ data: dummyData.salesReport });
-  },
-  getBookingsReport: () => {
-    console.log('Mock getBookingsReport called');
-    return Promise.resolve({ data: dummyData.bookingsReport });
-  },
-  getFinancialReport: () => {
-    console.log('Mock getFinancialReport called');
-    return Promise.resolve({ data: dummyData.financialReport });
-  },
-  getPerformanceReport: () => {
-    console.log('Mock getPerformanceReport called');
-    return Promise.resolve({ data: dummyData.performanceReport });
-  },
-  getApprovals: () => {
-    console.log('Mock getApprovals called');
-    return Promise.resolve({ data: dummyData.approvals });
+  rejectCreditTopup: async (id) => {
+    const res = await http.post(`/api/v1/admin/credit-topups/${id}/reject`);
+    return res.data;
   },
   getAdminDashboard: async () => {
     const res = await http.get('/api/v1/admin/dashboard');
@@ -330,6 +205,18 @@ const api = {
   getAdminLogs: async () => {
     const res = await http.get('/api/v1/admin/audit-logs');
     return { data: res.data };
+  },
+  getSyncLogs: async () => {
+    const res = await http.get('/api/v1/admin/sync-logs');
+    return { data: res.data };
+  },
+  triggerSync: async () => {
+    const res = await http.post('/api/v1/admin/sync/trigger');
+    return res.data;
+  },
+  updateSystemSetting: async (key, payload) => {
+    const res = await http.put(`/api/v1/admin/settings/${encodeURIComponent(key)}`, payload);
+    return res.data;
   },
   getEmployees: async () => {
     const res = await http.get('/api/v1/employees');
@@ -341,6 +228,10 @@ const api = {
   },
   updateEmployee: async (id, payload) => {
     const res = await http.put(`/api/v1/employees/${id}`, payload);
+    return res.data;
+  },
+  deleteEmployee: async (id) => {
+    const res = await http.delete(`/api/v1/employees/${id}`);
     return res.data;
   },
   deactivateEmployee: async (id) => {

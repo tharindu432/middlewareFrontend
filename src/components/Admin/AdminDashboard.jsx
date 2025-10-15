@@ -7,14 +7,15 @@ const AdminDashboard = () => {
   useEffect(() => {
     const fetchDashboard = async () => {
       try {
-        const [agents, approvals, logs] = await Promise.all([
+        const [agents, dashboardRes, logs] = await Promise.all([
           api.getAgents(),
-          api.getApprovals(),
+          api.getAdminDashboard(),
           api.getAdminLogs(),
         ]);
+        const pending = dashboardRes?.data?.pendingApprovals || dashboardRes?.data?.approvals || 0;
         setDashboard({
           agents: agents.data.length || 0,
-          approvals: approvals.data.length || 0,
+          approvals: Array.isArray(pending) ? pending.length : Number(pending) || 0,
           logs: logs.data.length || 0,
         });
       } catch (error) {

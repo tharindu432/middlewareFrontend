@@ -1,16 +1,20 @@
 import { useState } from 'react';
 import { api } from '../../services/api';
+import { useToast } from '../Common/Toast';
 
 const EmployeeDeactivate = () => {
+  const toast = useToast();
   const [employeeId, setEmployeeId] = useState('');
 
   const handleDeactivate = async (e) => {
     e.preventDefault();
     try {
       await api.deactivateEmployee(employeeId);
-      alert('Employee deactivated successfully!');
+      toast.success('Employee deactivated');
+      setEmployeeId('');
     } catch (error) {
-      console.error('Employee deactivation failed:', error);
+      const msg = error?.response?.data?.message || 'Employee deactivation failed';
+      toast.error(msg);
     }
   };
 

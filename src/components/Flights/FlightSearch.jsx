@@ -3,7 +3,7 @@ import { api } from '../../services/api';
 import { motion } from 'framer-motion';
 
 const FlightSearch = () => {
-  const [searchParams, setSearchParams] = useState({ origin: '', destination: '', date: '' });
+  const [searchParams, setSearchParams] = useState({ origin: '', destination: '', departureDate: '' });
   const [flights, setFlights] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -11,8 +11,14 @@ const FlightSearch = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      const response = await api.searchFlights(searchParams);
-      setFlights(response.data);
+      const params = {
+        origin: searchParams.origin,
+        destination: searchParams.destination,
+        departureDate: searchParams.departureDate,
+      };
+      const response = await api.searchFlights(params);
+      const list = Array.isArray(response.data) ? response.data : (response.data?.items || []);
+      setFlights(list);
     } catch (error) {
       console.error('Flight search failed:', error);
     } finally {
@@ -45,8 +51,8 @@ const FlightSearch = () => {
         />
         <input
           type="date"
-          value={searchParams.date}
-          onChange={(e) => setSearchParams({ ...searchParams, date: e.target.value })}
+          value={searchParams.departureDate}
+          onChange={(e) => setSearchParams({ ...searchParams, departureDate: e.target.value })}
           className="w-full p-3 rounded-lg bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
         <motion.button
@@ -62,13 +68,13 @@ const FlightSearch = () => {
       <div className="mt-6 space-y-4">
         {flights.map((flight) => (
           <motion.div
-            key={flight.id}
+            key={flight.id || flight.availabilityId}
             className="p-4 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
           >
-            <p>{flight.origin} to {flight.destination}</p>
-            <p className="text-gold-500 font-semibold">${flight.price}</p>
+            <p>{(flight.origin || flight.from) } to {(flight.destination || flight.to)}</p>
+            <p className="text-gold-500 font-semibold">${flight.price || flight.total || flight.fare || ''}</p>
           </motion.div>
         ))}
       </div>

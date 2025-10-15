@@ -2,25 +2,39 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import Loader from '../components/Common/Loader';
 import { Plus, ClipboardList, CheckCircle, Clock, XCircle, Eye, Edit2, Plane } from 'lucide-react';
+import { api } from '../services/api';
 
 const Bookings = () => {
   const [bookings, setBookings] = useState([]);
-  const [loading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Dummy data
-  const dummyBookings = [
-    { id: 'BK12346', customer: 'Bob Williams', route: 'SFO - ORD', date: '2024-08-06', amount: 280, status: 'Pending', email: 'bob@example.com', phone: '+1234567890' },
-    { id: 'BK12345', customer: 'Alice Johnson', route: 'JFK - LAX', date: '2024-08-05', amount: 350, status: 'Confirmed', email: 'alice@example.com', phone: '+1234567891' },
-    { id: 'BK12344', customer: 'Charlie Brown', route: 'LAX - MIA', date: '2024-08-04', amount: 420, status: 'Confirmed', email: 'charlie@example.com', phone: '+1234567892' },
-    { id: 'BK12343', customer: 'Diana Prince', route: 'ORD - SEA', date: '2024-08-03', amount: 315, status: 'Cancelled', email: 'diana@example.com', phone: '+1234567893' },
-    { id: 'BK12342', customer: 'Ethan Hunt', route: 'MIA - JFK', date: '2024-08-02', amount: 390, status: 'Confirmed', email: 'ethan@example.com', phone: '+1234567894' },
-    { id: 'BK12341', customer: 'Fiona Gallagher', route: 'SEA - LAX', date: '2024-08-01', amount: 245, status: 'Pending', email: 'fiona@example.com', phone: '+1234567895' },
-  ];
+  const load = async () => {
+    setLoading(true);
+    try {
+      const res = await api.searchBookings({});
+      const list = Array.isArray(res.data) ? res.data : (res.data?.items || []);
+      // Normalize to fields used in table
+      const normalized = list.map((b) => ({
+        id: b.id || b.bookingId || b.pnr || b.reference || 'N/A',
+        customer: b.customer || b.contactName || b.contact?.name || b.passengers?.[0]?.lastName || 'Customer',
+        email: b.contactEmail || b.contact?.email || '',
+        route: b.route || `${b.origin || ''} - ${b.destination || ''}`.trim(),
+        date: b.date || b.createdAt || b.departureDate || '',
+        amount: b.amount || b.totalAmount || 0,
+        status: b.status || 'Pending',
+      }));
+      setBookings(normalized);
+    } catch (e) {
+      console.error('Failed to load bookings', e);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    setBookings(dummyBookings);
+    load();
   }, []);
 
   const filteredBookings = bookings.filter(booking => {
@@ -210,8 +224,18 @@ const Bookings = () => {
                         whileHover={{ scale: 1.2 }}
                         whileTap={{ scale: 0.9 }}
                         title="Cancel"
+                        onClick={async () => { try { await api.cancelBooking(booking.id); await load(); } catch (e) { alert('Cancel failed'); } }}
                       >
                         <XCircle size={16} />
+                      </motion.button>
+                      <motion.button
+                        className="text-green-600 hover:text-green-700 cursor-pointer"
+                        whileHover={{ scale: 1.2 }}
+                        whileTap={{ scale: 0.9 }}
+                        title="Reconfirm"
+                        onClick={async () => { try { await api.reconfirmBooking(booking.id); await load(); } catch (e) { alert('Reconfirm failed'); } }}
+                      >
+                        <CheckCircle size={16} />
                       </motion.button>
                     </div>
                   </td>

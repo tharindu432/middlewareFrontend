@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { api } from '../../services/api';
+import { useToast } from '../Common/Toast';
 
 const BookingList = () => {
+  const toast = useToast();
   const [bookings, setBookings] = useState([]);
 
   useEffect(() => {
@@ -10,7 +12,8 @@ const BookingList = () => {
         const response = await api.searchBookings({});
         setBookings(response.data);
       } catch (error) {
-        console.error('Booking list fetch failed:', error);
+        const msg = error?.response?.data?.message || 'Failed to load bookings';
+        toast.error(msg);
       }
     };
     fetchBookings();
@@ -42,5 +45,6 @@ const BookingList = () => {
     </div>
   );
 };
+
 
 export default BookingList;
