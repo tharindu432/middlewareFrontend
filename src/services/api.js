@@ -3,9 +3,16 @@ import axios from 'axios';
 // Configure API base URL via Vite env or fallback
 const API_BASE_URL = import.meta?.env?.VITE_API_BASE_URL || 'http://localhost:8080';
 
-// Axios instance with Authorization support
-const http = axios.create({ baseURL: API_BASE_URL });
+// Create axios instance with base configuration
+const http = axios.create({
+    baseURL: API_BASE_URL,
+    timeout: 30000,
+    headers: {
+        'Content-Type': 'application/json'
+    }
+});
 
+// Request interceptor to add auth token
 http.interceptors.request.use((config) => {
   const token = localStorage.getItem('accessToken');
   if (token) {
@@ -15,233 +22,489 @@ http.interceptors.request.use((config) => {
   return config;
 });
 
+// Response interceptor for token refresh
 http.interceptors.response.use(
-  (res) => res,
+    (response) => response,
   async (error) => {
     const originalRequest = error.config || {};
-    if (error?.response?.status === 401 && !originalRequest._retry) {
+
+      if (error?.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
-      try {
+
+        try {
         const refreshToken = localStorage.getItem('refreshToken');
-        if (!refreshToken) throw new Error('Missing refresh token');
-        const r = await http.post('/api/v1/auth/refresh', { refreshToken });
-        const newAccess = r?.data?.token || r?.data?.accessToken;
-        const newRefresh = r?.data?.refreshToken;
-        if (!newAccess) throw new Error('No token in refresh response');
-        localStorage.setItem('accessToken', newAccess);
-        if (newRefresh) localStorage.setItem('refreshToken', newRefresh);
-        originalRequest.headers = originalRequest.headers || {};
-        originalRequest.headers.Authorization = `Bearer ${newAccess}`;
+          if (!refreshToken) throw new Error('No refresh token available');
+
+          const response = await http.post('/api/v1/auth/refresh', {
+              refreshToken
+          });
+
+          const newAccessToken = response?.data?.token || response?.data?.accessToken;
+          const newRefreshToken = response?.data?.refreshToken;
+
+          if (!newAccessToken) throw new Error('No token in refresh response');
+
+          localStorage.setItem('accessToken', newAccessToken);
+          if (newRefreshToken) {
+              localStorage.setItem('refreshToken', newRefreshToken);
+          }
+
+          originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
         return http(originalRequest);
-      } catch (refreshErr) {
+
+      } catch (refreshError) {
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
-        if (typeof window !== 'undefined') window.location.href = '/login';
-        return Promise.reject(refreshErr);
+          localStorage.removeItem('role');
+          localStorage.removeItem('userInfo');
+
+          if (typeof window !== 'undefined') {
+              window.location.href = '/login';
+          }
+          return Promise.reject(refreshError);
       }
     }
-    return Promise.reject(error);
+
+      return Promise.reject(error);
   }
 );
 
-// Helper to extract token from common response shapes
-const extractToken = (resData) => {
-  if (!resData) return undefined;
+// Helper function to extract token from various response formats
+const extractToken = (responseData) => {
+    if (!responseData) return undefined;
   return (
-    resData.token ||
-    resData.accessToken ||
-    resData.jwt ||
-    (resData.data && (resData.data.token || resData.data.accessToken))
+      responseData.token ||
+      responseData.accessToken ||
+      responseData.jwt ||
+      (responseData.data && (responseData.data.token || responseData.data.accessToken))
   );
 };
 
+// Complete API service matching the integration guide
 const api = {
-  async login(email, password, userType = 'ADMIN') {
-    const res = await http.post('/api/v1/auth/login', { email, password, userType });
-    const token = res?.data?.token || extractToken(res.data);
-    const refreshToken = res?.data?.refreshToken;
-    return { data: { token, refreshToken } };
+    // ========================================
+    // AUTHENTICATION ENDPOINTS
+    // ========================================
+
+    async login(email, password, userType = 'ADMIN') {
+      const response = await http.post('/api/v1/auth/login', {
+          email,
+          password,
+          userType
+      });
+      const token = extractToken(response.data);
+      const refreshToken = response?.data?.refreshToken;
+      return {
+          message: "Login successful",
+          data: {token, refreshToken, user: response.data.user}
+      };
   },
 
   async registerAdmin(payload) {
-    const res = await http.post('/api/v1/auth/register/admin', payload);
-    return res.data;
+      const response = await http.post('/api/v1/auth/register/admin', payload);
+      return {
+          message: "Admin registered successfully",
+          data: response.data
+      };
   },
-  async logout() {
+
+    async refreshToken() {
+        const refreshToken = localStorage.getItem('refreshToken');
+        const response = await http.post('/api/v1/auth/refresh', {refreshToken});
+        const token = extractToken(response.data);
+        const newRefreshToken = response?.data?.refreshToken;
+        return {
+            message: "Token refreshed successfully",
+            data: {token, refreshToken: newRefreshToken}
+        };
+    },
+
+    async logout() {
     try {
       const refreshToken = localStorage.getItem('refreshToken');
       await http.post('/api/v1/auth/logout', { refreshToken });
-    } catch {
-      // ignore backend logout failures, proceed with client cleanup
+        return {message: "Logout successful", data: null};
+    } catch (error) {
+        // Ignore backend logout failures, proceed with client cleanup
+        return {message: "Logout completed", data: null};
     }
   },
-  async refreshToken() {
-    const refreshToken = localStorage.getItem('refreshToken');
-    const res = await http.post('/api/v1/auth/refresh', { refreshToken });
-    const token = res?.data?.token || extractToken(res.data);
-    const newRefresh = res?.data?.refreshToken;
-    return { data: { token, refreshToken: newRefresh } };
-  },
-  searchFlights: async (params) => {
-    const res = await http.get('/api/v1/flights/search', { params });
-    return { data: res.data };
-  },
-  getFlightDetails: async (id) => {
-    const res = await http.get(`/api/v1/flights/${id}`);
-    return { data: res.data };
-  },
-  getFareRules: async (fareId) => {
-    const res = await http.get(`/api/v1/flights/fares/${fareId}/rules`);
-    return { data: res.data };
-  },
-  createBooking: async (payload) => {
-    const res = await http.post('/api/v1/bookings', payload);
-    return res.data;
-  },
-  getBooking: async (id) => {
-    const res = await http.get(`/api/v1/bookings/${id}`);
-    return { data: res.data };
-  },
-  searchBookings: async (params) => {
-    const res = await http.get('/api/v1/bookings', { params });
-    return { data: res.data };
-  },
-  cancelBooking: async (id) => {
-    const res = await http.post(`/api/v1/bookings/${id}/cancel`);
-    return res.data;
-  },
-  reconfirmBooking: async (id) => {
-    const res = await http.post(`/api/v1/bookings/${id}/reconfirm`);
-    return res.data;
-  },
-  issueTicket: async (payload) => {
-    const res = await http.post('/api/v1/tickets/issue', payload);
-    return res.data;
-  },
-  getTicket: async (id) => {
-    const res = await http.get(`/api/v1/tickets/${id}`);
-    return { data: res.data };
-  },
-  searchTickets: async (params) => {
-    const res = await http.get('/api/v1/tickets', { params });
-    return { data: res.data };
-  },
-  voidTicket: async (id) => {
-    const res = await http.post(`/api/v1/tickets/${id}/void`);
-    return res.data;
-  },
-  refundTicket: async (id) => {
-    const res = await http.post(`/api/v1/tickets/${id}/refund`);
-    return res.data;
-  },
-  getAgentProfile: async () => {
-    const res = await http.get('/api/v1/agents/profile');
-    return { data: res.data };
-  },
-  updateAgent: async (payload) => {
-    const res = await http.put('/api/v1/agents/profile', payload);
-    return res.data;
-  },
-  getAgentStatistics: async () => {
-    const res = await http.get('/api/v1/agents/statistics');
-    return { data: res.data };
+
+    // ========================================
+    // AGENT ENDPOINTS (Admin Operations)
+    // ========================================
+
+    async getAllAgents() {
+        const response = await http.get('/api/v1/admin/agents');
+        return {
+            message: "Agents retrieved successfully",
+            data: response.data
+        };
   },
 
-  // Agent-side user management (Agent can manage their own users)
-  getAgentUsers: async () => {
-    const res = await http.get('/api/v1/agents/users');
-    return { data: res.data };
-  },
-  createAgentUser: async (payload) => {
-    const res = await http.post('/api/v1/agents/users', payload);
-    return res.data;
+    async createAgent(payload) {
+        const response = await http.post('/api/v1/admin/agents', payload);
+        return {
+            message: "Agent created successfully",
+            data: response.data
+        };
   },
 
-  // Admin-side agent management
-  getAgents: async () => {
-    const res = await http.get('/api/v1/admin/agents');
-    return { data: res.data };
+    async updateAgentAdmin(agentId, payload) {
+        const response = await http.put(`/api/v1/admin/agents/${agentId}`, payload);
+        return {
+            message: "Agent updated successfully",
+            data: response.data
+        };
   },
-  createAgent: async (payload) => {
-    const res = await http.post('/api/v1/admin/agents', payload);
-    return res.data;
+
+    async deleteAgent(agentId) {
+        const response = await http.delete(`/api/v1/admin/agents/${agentId}`);
+        return {
+            message: "Agent deleted successfully",
+            data: response.data
+        };
   },
-  updateAgentAdmin: async (id, payload) => {
-    const res = await http.put(`/api/v1/admin/agents/${id}`, payload);
-    return res.data;
+
+    // ========================================
+    // AGENT ENDPOINTS (Self-Service)
+    // ========================================
+
+    async getProfile() {
+        const response = await http.get('/api/v1/agents/profile');
+        return {
+            message: "Profile retrieved successfully",
+            data: response.data
+        };
   },
-  deleteAgent: async (id) => {
-    const res = await http.delete(`/api/v1/admin/agents/${id}`);
-    return res.data;
+
+    async updateProfile(payload) {
+        const response = await http.put('/api/v1/agents/profile', payload);
+        return {
+            message: "Profile updated successfully",
+            data: response.data
+        };
   },
-  getCreditBalance: async () => {
-    const res = await http.get('/api/v1/credit/balance');
-    return { data: res.data };
+
+    async getStatistics() {
+        const response = await http.get('/api/v1/agents/statistics');
+        return {
+            message: "Statistics retrieved successfully",
+            data: response.data
+        };
   },
-  getCreditTransactions: async () => {
-    const res = await http.get('/api/v1/credit/transactions');
-    return { data: res.data };
+
+    // ========================================
+    // EMPLOYEE ENDPOINTS
+    // ========================================
+
+    async getAllEmployees() {
+        const response = await http.get('/api/v1/employees');
+        return {
+            message: "Employees retrieved successfully",
+            data: response.data
+        };
   },
-  topupCredit: async (payload) => {
-    const res = await http.post('/api/v1/credit/topup', payload);
-    return res.data;
+
+    async createEmployee(payload) {
+        const response = await http.post('/api/v1/employees', payload);
+        return {
+            message: "Employee created successfully",
+            data: response.data
+        };
   },
-  getCreditHistory: async () => {
-    const res = await http.get('/api/v1/credit/topups');
-    return { data: res.data };
+
+    async updateEmployee(employeeId, payload) {
+        const response = await http.put(`/api/v1/employees/${employeeId}`, payload);
+        return {
+            message: "Employee updated successfully",
+            data: response.data
+        };
   },
-  approveCreditTopup: async (id) => {
-    const res = await http.post(`/api/v1/admin/credit-topups/${id}/approve`);
-    return res.data;
+
+    async deleteEmployee(employeeId) {
+        const response = await http.delete(`/api/v1/employees/${employeeId}`);
+        return {
+            message: "Employee deleted successfully",
+            data: response.data
+        };
   },
-  rejectCreditTopup: async (id) => {
-    const res = await http.post(`/api/v1/admin/credit-topups/${id}/reject`);
-    return res.data;
+
+    async deactivateEmployee(employeeId) {
+        const response = await http.post(`/api/v1/employees/${employeeId}/deactivate`);
+        return {
+            message: "Employee deactivated successfully",
+            data: response.data
+        };
   },
-  getAdminDashboard: async () => {
-    const res = await http.get('/api/v1/admin/dashboard');
-    return { data: res.data };
+
+    async resetEmployeePassword(employeeId, payload) {
+        const response = await http.post(`/api/v1/employees/${employeeId}/reset-password`, payload);
+        return {
+            message: "Password reset successfully",
+            data: response.data
+        };
   },
-  getAdminLogs: async () => {
-    const res = await http.get('/api/v1/admin/audit-logs');
-    return { data: res.data };
+
+    // ========================================
+    // CREDIT ENDPOINTS
+    // ========================================
+
+    async getCreditBalance() {
+        const response = await http.get('/api/v1/credit/balance');
+        return {
+            message: "Credit balance retrieved successfully",
+            data: response.data
+        };
   },
-  getSyncLogs: async () => {
-    const res = await http.get('/api/v1/admin/sync-logs');
-    return { data: res.data };
+
+    async getCreditTransactions() {
+        const response = await http.get('/api/v1/credit/transactions');
+        return {
+            message: "Credit transactions retrieved successfully",
+            data: response.data
+        };
   },
-  triggerSync: async () => {
-    const res = await http.post('/api/v1/admin/sync/trigger');
-    return res.data;
+
+    async requestCreditTopup(payload) {
+        const response = await http.post('/api/v1/credit/topup', payload);
+        return {
+            message: "Credit top-up requested successfully",
+            data: response.data
+        };
   },
-  updateSystemSetting: async (key, payload) => {
-    const res = await http.put(`/api/v1/admin/settings/${encodeURIComponent(key)}`, payload);
-    return res.data;
+
+    async getTopupHistory() {
+        const response = await http.get('/api/v1/credit/topups');
+        return {
+            message: "Top-up history retrieved successfully",
+            data: response.data
+        };
   },
-  getEmployees: async () => {
-    const res = await http.get('/api/v1/employees');
-    return { data: res.data };
+
+    async approveCreditTopup(topupId) {
+        const response = await http.post(`/api/v1/admin/credit-topups/${topupId}/approve`);
+        return {
+            message: "Credit top-up approved successfully",
+            data: response.data
+        };
   },
-  createEmployee: async (payload) => {
-    const res = await http.post('/api/v1/employees', payload);
-    return res.data;
+
+    async rejectCreditTopup(topupId) {
+        const response = await http.post(`/api/v1/admin/credit-topups/${topupId}/reject`);
+        return {
+            message: "Credit top-up rejected successfully",
+            data: response.data
+        };
   },
-  updateEmployee: async (id, payload) => {
-    const res = await http.put(`/api/v1/employees/${id}`, payload);
-    return res.data;
+
+    // ========================================
+    // FLIGHT ENDPOINTS
+    // ========================================
+
+    async searchFlights(params) {
+        const response = await http.get('/api/v1/flights/search', {params});
+        return {
+            message: "Flights retrieved successfully",
+            data: response.data
+        };
   },
-  deleteEmployee: async (id) => {
-    const res = await http.delete(`/api/v1/employees/${id}`);
-    return res.data;
+
+    async getFlightDetails(availabilityId) {
+        const response = await http.get(`/api/v1/flights/${availabilityId}`);
+        return {
+            message: "Flight details retrieved successfully",
+            data: response.data
+        };
   },
-  deactivateEmployee: async (id) => {
-    const res = await http.post(`/api/v1/employees/${id}/deactivate`);
-    return res.data;
+
+    async getFareRules(fareId) {
+        const response = await http.get(`/api/v1/flights/fares/${fareId}/rules`);
+        return {
+            message: "Fare rules retrieved successfully",
+            data: response.data
+        };
   },
-  resetEmployeePassword: async (id, payload) => {
-    const res = await http.post(`/api/v1/employees/${id}/reset-password`, payload || {});
-    return res.data;
+
+    // ========================================
+    // BOOKING ENDPOINTS
+    // ========================================
+
+    async createBooking(payload) {
+        const response = await http.post('/api/v1/bookings', payload);
+        return {
+            message: "Booking created successfully",
+            data: response.data
+        };
   },
+
+    async getBookingDetails(bookingId) {
+        const response = await http.get(`/api/v1/bookings/${bookingId}`);
+        return {
+            message: "Booking details retrieved successfully",
+            data: response.data
+        };
+  },
+
+    async searchBookings(params) {
+        const response = await http.get('/api/v1/bookings', {params});
+        return {
+            message: "Bookings retrieved successfully",
+            data: response.data
+        };
+  },
+
+    async cancelBooking(bookingId) {
+        const response = await http.post(`/api/v1/bookings/${bookingId}/cancel`);
+        return {
+            message: "Booking cancelled successfully",
+            data: response.data
+        };
+  },
+
+    async reconfirmBooking(bookingId) {
+        const response = await http.post(`/api/v1/bookings/${bookingId}/reconfirm`);
+        return {
+            message: "Booking reconfirmed successfully",
+            data: response.data
+        };
+  },
+
+    // ========================================
+    // TICKET ENDPOINTS
+    // ========================================
+
+    async issueTickets(payload) {
+        const response = await http.post('/api/v1/tickets/issue', payload);
+        return {
+            message: "Tickets issued successfully",
+            data: response.data
+        };
+  },
+
+    async getTicketDetails(ticketId) {
+        const response = await http.get(`/api/v1/tickets/${ticketId}`);
+        return {
+            message: "Ticket details retrieved successfully",
+            data: response.data
+        };
+  },
+
+    async searchTickets(params) {
+        const response = await http.get('/api/v1/tickets', {params});
+        return {
+            message: "Tickets retrieved successfully",
+            data: response.data
+        };
+  },
+
+    async voidTicket(ticketId) {
+        const response = await http.post(`/api/v1/tickets/${ticketId}/void`);
+        return {
+            message: "Ticket voided successfully",
+            data: response.data
+        };
+  },
+
+    async refundTicket(ticketId) {
+        const response = await http.post(`/api/v1/tickets/${ticketId}/refund`);
+        return {
+            message: "Ticket refunded successfully",
+            data: response.data
+        };
+  },
+
+    // ========================================
+    // ADMIN ENDPOINTS
+    // ========================================
+
+    async getDashboardStatistics() {
+        const response = await http.get('/api/v1/admin/dashboard');
+        return {
+            message: "Dashboard statistics retrieved successfully",
+            data: response.data
+        };
+  },
+
+    async getSyncLogs() {
+        const response = await http.get('/api/v1/admin/sync-logs');
+        return {
+            message: "Sync logs retrieved successfully",
+            data: response.data
+        };
+  },
+
+    async triggerSync() {
+        const response = await http.post('/api/v1/admin/sync/trigger');
+        return {
+            message: "Sync triggered successfully",
+            data: response.data
+        };
+  },
+
+    async getAuditLogs() {
+        const response = await http.get('/api/v1/admin/audit-logs');
+        return {
+            message: "Audit logs retrieved successfully",
+            data: response.data
+        };
+  },
+
+    async updateSystemSetting(key, payload) {
+        const response = await http.put(`/api/v1/admin/settings/${encodeURIComponent(key)}`, payload);
+        return {
+            message: "System setting updated successfully",
+            data: response.data
+        };
+  },
+
+    // ========================================
+    // LEGACY SUPPORT (for backward compatibility)
+    // ========================================
+
+    // Legacy aliases for existing code
+    getAgentProfile: function () {
+        return this.getProfile();
+    },
+    updateAgent(payload) {
+        return this.updateProfile(payload);
+    },
+    getAgentStatistics() {
+        return this.getStatistics();
+    },
+    getAgentUsers() {
+        return this.getAllEmployees();
+    },
+    createAgentUser(payload) {
+        return this.createEmployee(payload);
+    },
+    getAgents() {
+        return this.getAllAgents();
+    },
+    topupCredit(payload) {
+        return this.requestCreditTopup(payload);
+    },
+    getCreditHistory() {
+        return this.getTopupHistory();
+    },
+    getAdminDashboard() {
+        return this.getDashboardStatistics();
+    },
+    getAdminLogs() {
+        return this.getAuditLogs();
+    },
+    getEmployees() {
+        return this.getAllEmployees();
+    },
+    getBooking(id) {
+        return this.getBookingDetails(id);
+    },
+    issueTicket(payload) {
+        return this.issueTickets(payload);
+    },
+    getTicket(id) {
+        return this.getTicketDetails(id);
+    }
 };
 
 export { api };

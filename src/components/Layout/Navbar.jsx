@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Search, Bell, LogOut, Menu } from 'lucide-react';
+import {useAuth} from '../Auth/AuthContext';
 
 const Navbar = ({ onToggleSidebar }) => {
   const [showNotifications, setShowNotifications] = useState(false);
   const location = useLocation();
-  const role = localStorage.getItem('role') || 'ADMIN';
+    const {getRoleDisplayName, user, logout, isAdmin} = useAuth();
 
   // Get page title from current path
   const getPageTitle = () => {
@@ -15,19 +16,31 @@ const Navbar = ({ onToggleSidebar }) => {
       '/flights': 'Flights',
       '/bookings': 'Bookings',
       '/tickets': 'Tickets',
-      '/agents': role === 'AGENT' ? 'My Users' : 'Agents',
+        '/agents': isAdmin() ? 'Agents' : 'My Team',
       '/employees': 'Employees',
       '/credit': 'Credit',
       '/invoices': 'Invoices',
       '/payments': 'Payments',
       '/reports': 'Reports',
-      '/admin': 'Admin',
+        '/admin': 'Admin Panel',
       '/settings': 'Settings',
     };
     return titles[path] || 'Dashboard';
   };
 
-  return (
+    const handleLogout = async () => {
+        try {
+            await logout();
+        } catch (error) {
+            console.error('Logout error:', error);
+            // Force logout even if API call fails
+            window.location.href = '/login';
+        }
+    };
+
+    const roleDisplayName = getRoleDisplayName();
+
+    return (
     <nav className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between shadow-sm z-30 backdrop-blur-sm bg-white/95 flex-shrink-0">
       {/* Left section - Hamburger and Page title */}
       <div className="flex items-center gap-4">
@@ -42,7 +55,9 @@ const Navbar = ({ onToggleSidebar }) => {
 
         <div>
           <h1 className="text-xl font-bold text-slate-900">{getPageTitle()}</h1>
-          <p className="text-sm text-slate-500">Welcome back, {role === 'ADMIN' ? 'Admin' : role === 'AGENT' ? 'Agent' : role}!</p>
+            <p className="text-sm text-slate-500">
+                Welcome back, {user?.name || roleDisplayName}!
+            </p>
         </div>
       </div>
 
@@ -97,27 +112,24 @@ const Navbar = ({ onToggleSidebar }) => {
         {/* User profile */}
         <div className="hidden sm:flex items-center gap-3 px-3 py-2 hover:bg-slate-50 rounded-xl cursor-pointer transition-all duration-200">
           <div className="w-9 h-9 bg-gradient-to-br from-indigo-500 via-indigo-600 to-purple-600 rounded-full flex items-center justify-center shadow-lg shadow-indigo-500/30">
-            <span className="text-white font-semibold text-sm">A</span>
+            <span className="text-white font-semibold text-sm">
+              {(user?.name || roleDisplayName).charAt(0).toUpperCase()}
+            </span>
           </div>
           <div className="text-left">
-            <p className="text-sm font-semibold text-slate-900">{role === 'ADMIN' ? 'Admin User' : 'Agent User'}</p>
-            <p className="text-xs text-slate-500">{role === 'ADMIN' ? 'Administrator' : 'Agent'}</p>
+              <p className="text-sm font-semibold text-slate-900">
+                  {user?.name || roleDisplayName}
+              </p>
+              <p className="text-xs text-slate-500">
+                  {user?.email || (isAdmin() ? 'Administrator' : roleDisplayName)}
+              </p>
           </div>
         </div>
 
         {/* Logout button */}
         <button
           className="p-2.5 text-slate-600 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all duration-200 cursor-pointer group"
-          onClick={async () => {
-            try {
-              const { api } = await import('../../services/api');
-              await api.logout();
-            } catch {}
-            localStorage.removeItem('accessToken');
-            localStorage.removeItem('refreshToken');
-            localStorage.removeItem('role');
-            window.location.href = '/login';
-          }}
+          onClick={handleLogout}
           title="Logout"
         >
           <LogOut size={20} className="group-hover:scale-110 transition-transform" />
